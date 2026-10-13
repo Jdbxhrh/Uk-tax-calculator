@@ -4,6 +4,38 @@ from calc import calc_income_tax,calc_ni,calc_student_loan
 
 st.set_page_config(page_title="UK Take-Home Pay Calculator",page_icon="💷",layout="centered")
 
+def money(label,default=""):
+    text=st.text_input(label,value=default,placeholder="0.00")
+    try:
+        return max(float(text.replace(",","")),0.0)
+    except ValueError:
+        return 0.0
+
+def item_group(title,key,hint,show_title=True):
+    if show_title:
+        st.subheader(title)
+    if key not in st.session_state:
+        st.session_state[key]=[]
+    label=title if not show_title else "Name"
+    with st.form(key+"form",clear_on_submit=True):
+        g1,g2=st.columns(2)
+        name=g1.text_input(label+" (e.g. "+hint+")")
+        cost=g2.text_input("Cost (£)",placeholder="0.00")
+        added=st.form_submit_button("+ Add")
+    if added and name:
+        try:
+            st.session_state[key].append((name,float(cost)))
+            st.rerun()
+        except ValueError:
+            st.warning("Enter the cost as a number, like 12.99")
+    for i,(n,c) in enumerate(st.session_state[key]):
+        n1,n2=st.columns([4,1])
+        n1.write(f"{n}: £{c:,.2f}")
+        if n2.button("Remove",key=f"{key}_rm{i}"):
+            st.session_state[key].pop(i)
+            st.rerun()
+    return sum(c for n,c in st.session_state[key])
+
 st.title("UK Take-Home Pay Calculator")
 st.caption("See your income tax, National Insurance and take-home pay.")
 
@@ -34,31 +66,18 @@ with tab1:
     st.plotly_chart(fig,use_container_width=True)
 
 with tab2:
-    monthly=st.number_input("Monthly take-home (£)",min_value=0.0,value=float(round(take_home/12)),step=50.0)
+    monthly=money("Monthly take-home (£)",str(round(take_home/12)))
     st.subheader("Essentials")
-    rent=st.number_input("Rent (£)",min_value=0.0,step=10.0)
-    food=st.number_input("Food (£)",min_value=0.0,step=10.0)
-    st.subheader("Subscriptions")
-    if "subs" not in st.session_state:
-        st.session_state.subs=[]
-    s1,s2=st.columns(2)
-    sub_name=s1.text_input("Name (e.g. Netflix)")
-    sub_cost=s2.number_input("Cost (£)",min_value=0.0,step=1.0)
-    if st.button("+ Add subscription"):
-        if sub_name:
-            st.session_state.subs.append((sub_name,sub_cost))
-    for i,(name,cost) in enumerate(st.session_state.subs):
-        n1,n2=st.columns([4,1])
-        n1.write(f"{name}: £{cost:,.2f}")
-        if n2.button("Remove",key=f"rm{i}"):
-            st.session_state.subs.pop(i)
-            st.rerun()
-    subs_total=sum(cost for name,cost in st.session_state.subs)
-    spent=rent+food+subs_total
+    rent=money("Rent (£)")
+    food=money("Food (£)")
+    bills_total=item_group("Bills","bills","Electric",False)
+    subs_total=item_group("Subscriptions","subs","Netflix")
+    transport_total=item_group("Transport","transport","Bus pass")
+    spent=rent+food+subs_total+bills_total+transport_total
     left=monthly-spent
     c1,c2=st.columns(2)
     c1.metric("Spent",f"£{spent:,.2f}")
     c2.metric("Left over",f"£{left:,.2f}")
 
-    budget_fig=go.Figure(go.Pie(labels=["Rent","Food","Subscriptions","Left over"],values=[rent,food,subs_total,max(left,0)],hole=0.5,marker_colors=["#C0392B","#E67E22","#2980B9","#1B5E3B"]))
+    budget_fig=go.Figure(go.Pie(labels=["Rent","Food","Subscriptions","Bills","Transport","Left over"],values=[rent,food,subs_total,bills_total,transport_total,max(left,0)],hole=0.5,marker_colors=["#C0392B","#E67E22","#2980B9","#8E44AD","#F1C40F","#1B5E3B"]))
     st.plotly_chart(budget_fig,use_container_width=True)
