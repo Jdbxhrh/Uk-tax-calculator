@@ -1,6 +1,6 @@
 import streamlit as st
 import plotly.graph_objects as go
-from calc import calc_income_tax,calc_ni,calc_student_loan,tax_breakdown,calc_take_home,find_salary
+from calc import calc_income_tax,calc_ni,calc_student_loan,tax_breakdown,calc_take_home,find_salary,calc_loan
 st.set_page_config(page_title="UK Take-Home Pay Calculator",page_icon="💷",layout="centered")
 
 def money(label,default=""):
@@ -38,7 +38,7 @@ def item_group(title,key,hint,show_title=True):
 st.title("UK Take-Home Pay Calculator")
 st.caption("See your income tax, National Insurance and take-home pay.")
 
-tab1,tab2,tab3,tab4,tab5,tab6=st.tabs(["Take-home calculator","Budget","Charts","Reverse","Compare","Savings"])
+tab1,tab2,tab3,tab4,tab5,tab6,tab7=st.tabs(["Take-home calculator","Budget","Charts","Reverse","Compare","Savings","Loans"])
 
 with tab1:
     salary=st.number_input("Annual salary (£)",min_value=0,value=35000,step=1000)
@@ -167,4 +167,26 @@ with tab6:
         sav_fig.add_scatter(x=list(range(len(history))),y=history,name="Balance")
         sav_fig.add_scatter(x=list(range(len(paid))),y=paid,name="Deposits only")
         sav_fig.update_layout(xaxis_title="Months",yaxis_title="£")
-        st.plotly_chart(sav_fig,use_container_width=True)
+        st.plotly_chart(sav_fig,use_container_width=True)  
+
+with tab7: 
+    st.subheader("Loan and mortgage calculator") 
+    loan_amount=st.number_input("Amount borrowed (£)",min_value=0,value=200000,step=5000) 
+    loan_rate=st.slider("Interest rate per year (%)",0.0,15.0,5.0,0.1) 
+    loan_years=st.slider("Term (years)",1,40,25) 
+    if loan_amount>0: 
+        pay,total_paid,interest=calc_loan(loan_amount,loan_rate,loan_years) 
+        l1,l2,l3=st.columns(3) 
+        l1.metric("MOnthly payment",f"£{pay:,.0f}") 
+        l2.metric("Total paid",f"£{total_paid:,.0f}")  
+        l3.metric("Total interest",f"£{interest:,.0f}") 
+        r=loan_rate/100/12 
+        bal=float(loan_amount) 
+        balances=[bal] 
+        for m in range(loan_years*12): 
+            bal=bal*(1+r)-pay 
+            balances.append(max(bal,0)) 
+        loan_fig=go.Figure() 
+        loan_fig.add_scatter(x=[m/12 for m in range(len(balances))],y=balances,name='Balance left') 
+        loan_fig.update_layout(xaxis_title="Years",yaxis_title="£ left to pay") 
+        st.plotly_chart(loan_fig,use_container_width=True)

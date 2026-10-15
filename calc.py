@@ -63,4 +63,14 @@ def find_salary(target_monthly,pension,scottish,plan):
             low=mid
         else:
             high=mid
-    return high
+    return high 
+
+def calc_loan(amount,rate,years):
+    n=years*12
+    r=rate/100/12
+    if r==0:
+        monthly=amount/n
+    else:
+        monthly=amount*r/(1-(1+r)**-n)
+    total=monthly*n
+    return monthly,total,total-amount
