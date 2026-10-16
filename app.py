@@ -1,6 +1,6 @@
 import streamlit as st
 import plotly.graph_objects as go
-from calc import calc_income_tax,calc_ni,calc_student_loan,tax_breakdown,calc_take_home,find_salary,calc_loan,calc_projection,calc_self_employed
+from calc import calc_income_tax,calc_ni,calc_student_loan,tax_breakdown,calc_take_home,find_salary,calc_loan,calc_projection,calc_self_employed,calc_take_home_2025
 st.set_page_config(page_title="UK Take-Home Pay Calculator",page_icon="💷",layout="centered")
 
 def money(label,default=""):
@@ -38,7 +38,7 @@ def item_group(title,key,hint,show_title=True):
 st.title("UK Take-Home Pay Calculator")
 st.caption("See your income tax, National Insurance and take-home pay.")
 
-tab1,tab2,tab3,tab4,tab5,tab6,tab7,tab8,tab9,tab10,tab11=st.tabs(["Take-home calculator","Budget","Charts","Reverse","Compare","Savings","Loans","Projection","Self-employed","Bonus","Sacrifice"]) 
+tab1,tab2,tab3,tab4,tab5,tab6,tab7,tab8,tab9,tab10,tab11,tab12=st.tabs(["Take-home calculator","Budget","Charts","Reverse","Compare","Savings","Loans","Projection","Self-employed","Bonus","Sacrifice","Tax year"])
 
 with tab1:
     salary=st.number_input("Annual salary (£)",min_value=0,value=35000,step=1000)
@@ -243,4 +243,14 @@ with tab11:
     x1,x2=st.columns(2)
     x1.metric("Normal pension, per month",f"£{normal/12:,.0f}")
     x2.metric("Salary sacrifice, per month",f"£{sacrifice/12:,.0f}")
-    st.metric("Extra you keep per year",f"£{sacrifice-normal:,.0f}")
+    st.metric("Extra you keep per year",f"£{sacrifice-normal:,.0f}") 
+
+with tab12: 
+    st.subheader("Tax year comparison") 
+    st.caption("Uses the salary, pension, Scottish and student loan settings from the first tab. 2025/26 against 2026/27.")
+    old=calc_take_home_2025(salary,pension,scottish,plan) 
+    new=calc_take_home(salary,pension,scottish, plan) 
+    y1,y2=st.columns(2) 
+    y1.metric("2025/26 per month",f"£{old/12:,.0f}") 
+    y2.metric("2026/27 per month",f"£{new/12:,.0f}") 
+    st.metric("Difference per year",f"£{new-old:,.0f}")

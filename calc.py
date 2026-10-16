@@ -88,6 +88,33 @@ def calc_projection(salary,pension,scottish,plan,raise_pct,inflation,years):
 def calc_self_employed(income,expenses,scottish,plan):
     profit=max(income-expenses,0) 
     tax=calc_income_tax(profit,scottish) 
-    ni=max(min(profit,50,270)-12570,0)*0.06+max(profit-50270,0)*0.02 
+    ni=max(min(profit,50270)-12570,0)*0.06+max(profit-50270,0)*0.02 
     loan=calc_student_loan(profit,plan) 
-    return profit,tax,ni,loan,profit-tax-ni-loan
+    return profit,tax,ni,loan,profit-tax-ni-loan 
+
+def calc_take_home_2025(salary,pension,scottish,plan): 
+    pension_amount=salary*pension/100 
+    taxable=salary-pension_amount 
+    allowance=12570 
+    if taxable>100000: 
+        allowance=max(0,12570-(taxable-100000)/2) 
+    income=max(0,taxable-allowance) 
+    if scottish: 
+        bands=[(2827,0.19),(14921,0.20),(31092,0.21),(62430,0.42),(125140,0.45),(float("inf"),0.48)] 
+    else: 
+        bands=[(37700,0.20),(125140,0.40),(float("inf"),0.45)] 
+    tax=0 
+    lower=0 
+    for limit,band_rate in bands: 
+        if income>lower: 
+            tax+=(min(income,limit)-lower)*band_rate 
+        lower=limit 
+    ni=calc_ni(salary) 
+    plans={"Plan 1":(26065,0.09),"Plan 2":(28470,0.09),"Plan 4":(32745,0.09),"Plan 5":(25000,0.09),"Postgraduate":(21000,0.06)}
+    loan=0
+    if plan!="None": 
+        threshold,loan_rate=plans[plan]
+        loan=max(salary-threshold,0)*loan_rate 
+    return salary-pension_amount-tax-ni-loan 
+ 
+        
