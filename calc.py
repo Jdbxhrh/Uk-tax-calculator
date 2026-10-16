@@ -83,3 +83,11 @@ def calc_projection(salary,pension,scottish,plan,raise_pct,inflation,years):
         real=take/(1+inflation/100)**y 
         rows.append((y,sal,take,real)) 
     return rows 
+
+
+def calc_self_employed(income,expenses,scottish,plan); 
+    profit=max(income-expenses,0) 
+    tax=calc_income_tax(profit,scottish) 
+    ni=max(min(profit,50,270)-12570,0)*0.06+max(profit-50270,0)*0.02 
+    loan=calc_student_loan(profit,plan) 
+    return profit,tax,ni,loan,profit-tax-ni-loan
