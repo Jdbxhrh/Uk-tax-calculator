@@ -1,6 +1,6 @@
 import streamlit as st
 import plotly.graph_objects as go
-from calc import calc_income_tax,calc_ni,calc_student_loan,tax_breakdown,calc_take_home,find_salary,calc_loan
+from calc import calc_income_tax,calc_ni,calc_student_loan,tax_breakdown,calc_take_home,find_salary,calc_loan,calc_projection 
 st.set_page_config(page_title="UK Take-Home Pay Calculator",page_icon="💷",layout="centered")
 
 def money(label,default=""):
@@ -38,7 +38,7 @@ def item_group(title,key,hint,show_title=True):
 st.title("UK Take-Home Pay Calculator")
 st.caption("See your income tax, National Insurance and take-home pay.")
 
-tab1,tab2,tab3,tab4,tab5,tab6,tab7=st.tabs(["Take-home calculator","Budget","Charts","Reverse","Compare","Savings","Loans"])
+tab1,tab2,tab3,tab4,tab5,tab6,tab7,tab8=st.tabs(["Take-home calculator","Budget","Charts","Reverse","Compare","Savings","Loans","Projection"])
 
 with tab1:
     salary=st.number_input("Annual salary (£)",min_value=0,value=35000,step=1000)
@@ -177,7 +177,7 @@ with tab7:
     if loan_amount>0: 
         pay,total_paid,interest=calc_loan(loan_amount,loan_rate,loan_years) 
         l1,l2,l3=st.columns(3) 
-        l1.metric("MOnthly payment",f"£{pay:,.0f}") 
+        l1.metric("Monthly payment",f"£{pay:,.0f}") 
         l2.metric("Total paid",f"£{total_paid:,.0f}")  
         l3.metric("Total interest",f"£{interest:,.0f}") 
         r=loan_rate/100/12 
@@ -189,4 +189,23 @@ with tab7:
         loan_fig=go.Figure() 
         loan_fig.add_scatter(x=[m/12 for m in range(len(balances))],y=balances,name='Balance left') 
         loan_fig.update_layout(xaxis_title="Years",yaxis_title="£ left to pay") 
-        st.plotly_chart(loan_fig,use_container_width=True)
+        st.plotly_chart(loan_fig,use_container_width=True)  
+
+with tab8: 
+    st.subheader("Salary projection") 
+    st.caption("USes the pension, Scottish and student loan settings from the first tab.") 
+    proj_salary=st.number_input("Starting salary (£)",min_value=0,value=35000,step=1000) 
+    raise_pct=st.slider("Yearly pay rise (%)",0.0,10.0,2.5,0.5) 
+    inflation=st.slider("Inflation per year (%)",0.0,10.0,2.5,0.5) 
+    proj_years=st.slider("Years to project",1,30,10) 
+    if proj_salary>00: 
+        proj=calc_projection(proj_salary,pension,scottish,plan,raise_pct,inflation,proj_years) 
+        last=proj[-1] 
+        p1,p2=st.columns(2) 
+        p1.metric(f"Take-home per month in year {proj_years}",f"£{last[2]/12:,.0f}") 
+        p2.metric("Same amount in today's money",f"£{last[3]/12:,.0f}")  
+        proj_fig=go.Figure() 
+        proj_fig.add_scatter(x=[row[0] for row in proj],y=[row[2]/12 for row in proj],name="Take-home") 
+        proj_fig.add_scatter(x=[row[0] for row in proj],y=[row[3]/12 for row in proj],name="In today's money") 
+        proj_fig.update_layout(xaxis_title="Years",yaxis_title="£ per month",legend=dict(orientation="h")) 
+        st.plotly_chart(proj_fig,use_container_width=True)

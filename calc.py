@@ -73,4 +73,13 @@ def calc_loan(amount,rate,years):
     else:
         monthly=amount*r/(1-(1+r)**-n)
     total=monthly*n
-    return monthly,total,total-amount
+    return monthly,total,total-amount 
+
+def calc_projection(salary,pension,scottish,plan,raise_pct,inflation,years): 
+    rows=[] 
+    for y in range(years+1): 
+        sal=salary*(1+raise_pct/100)**y 
+        take=calc_take_home(sal,pension,scottish,plan) 
+        real=take/(1+inflation/100)**y 
+        rows.append((y,sal,take,real)) 
+    return rows 
