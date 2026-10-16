@@ -1,6 +1,6 @@
 import streamlit as st
 import plotly.graph_objects as go
-from calc import calc_income_tax,calc_ni,calc_student_loan,tax_breakdown,calc_take_home,find_salary,calc_loan,calc_projection 
+from calc import calc_income_tax,calc_ni,calc_student_loan,tax_breakdown,calc_take_home,find_salary,calc_loan,calc_projection,calc_self_employed
 st.set_page_config(page_title="UK Take-Home Pay Calculator",page_icon="💷",layout="centered")
 
 def money(label,default=""):
@@ -38,7 +38,7 @@ def item_group(title,key,hint,show_title=True):
 st.title("UK Take-Home Pay Calculator")
 st.caption("See your income tax, National Insurance and take-home pay.")
 
-tab1,tab2,tab3,tab4,tab5,tab6,tab7,tab8=st.tabs(["Take-home calculator","Budget","Charts","Reverse","Compare","Savings","Loans","Projection"])
+tab1,tab2,tab3,tab4,tab5,tab6,tab7,tab8,tab9,tab10,tab11=st.tabs(["Take-home calculator","Budget","Charts","Reverse","Compare","Savings","Loans","Projection","Self-employed","Bonus","Sacrifice"]) 
 
 with tab1:
     salary=st.number_input("Annual salary (£)",min_value=0,value=35000,step=1000)
@@ -87,14 +87,14 @@ with tab2:
     c2.metric("Left over",f"£{left:,.2f}")
 
     budget_fig=go.Figure(go.Pie(labels=["Rent","Food","Subscriptions","Bills","Transport","Left over"],values=[rent,food,subs_total,bills_total,transport_total,max(left,0)],hole=0.5,marker_colors=["#C0392B","#E67E22","#2980B9","#8E44AD","#F1C40F","#1B5E3B"]))
-    st.plotly_chart(budget_fig,use_container_width=True) 
-    st.subheader("50/30/20 check") 
-    if monthly>0: 
+    st.plotly_chart(budget_fig,use_container_width=True)
+    st.subheader("50/30/20 check")
+    if monthly>0:
         needs=rent+food+bills_total+transport_total
-        wants=subs_total 
-        saved=max(left,0) 
-        st.write(f"Needs: {needs/monthly*100:,.0f}% (aim for 50%)") 
-        st.write(f"Wants: {wants/monthly*100:,.0f}% (aim for 30%)") 
+        wants=subs_total
+        saved=max(left,0)
+        st.write(f"Needs: {needs/monthly*100:,.0f}% (aim for 50%)")
+        st.write(f"Wants: {wants/monthly*100:,.0f}% (aim for 30%)")
         st.write(f"Savings: {saved/monthly*100:,.0f}% (aim for 20%)")
 
 with tab3:
@@ -167,45 +167,80 @@ with tab6:
         sav_fig.add_scatter(x=list(range(len(history))),y=history,name="Balance")
         sav_fig.add_scatter(x=list(range(len(paid))),y=paid,name="Deposits only")
         sav_fig.update_layout(xaxis_title="Months",yaxis_title="£")
-        st.plotly_chart(sav_fig,use_container_width=True)  
+        st.plotly_chart(sav_fig,use_container_width=True)
 
-with tab7: 
-    st.subheader("Loan and mortgage calculator") 
-    loan_amount=st.number_input("Amount borrowed (£)",min_value=0,value=200000,step=5000) 
-    loan_rate=st.slider("Interest rate per year (%)",0.0,15.0,5.0,0.1) 
-    loan_years=st.slider("Term (years)",1,40,25) 
-    if loan_amount>0: 
-        pay,total_paid,interest=calc_loan(loan_amount,loan_rate,loan_years) 
-        l1,l2,l3=st.columns(3) 
-        l1.metric("Monthly payment",f"£{pay:,.0f}") 
-        l2.metric("Total paid",f"£{total_paid:,.0f}")  
-        l3.metric("Total interest",f"£{interest:,.0f}") 
-        r=loan_rate/100/12 
-        bal=float(loan_amount) 
-        balances=[bal] 
-        for m in range(loan_years*12): 
-            bal=bal*(1+r)-pay 
-            balances.append(max(bal,0)) 
-        loan_fig=go.Figure() 
-        loan_fig.add_scatter(x=[m/12 for m in range(len(balances))],y=balances,name='Balance left') 
-        loan_fig.update_layout(xaxis_title="Years",yaxis_title="£ left to pay") 
-        st.plotly_chart(loan_fig,use_container_width=True)  
+with tab7:
+    st.subheader("Loan and mortgage calculator")
+    loan_amount=st.number_input("Amount borrowed (£)",min_value=0,value=200000,step=5000)
+    loan_rate=st.slider("Interest rate per year (%)",0.0,15.0,5.0,0.1)
+    loan_years=st.slider("Term (years)",1,40,25)
+    if loan_amount>0:
+        pay,total_paid,interest=calc_loan(loan_amount,loan_rate,loan_years)
+        l1,l2,l3=st.columns(3)
+        l1.metric("Monthly payment",f"£{pay:,.0f}")
+        l2.metric("Total paid",f"£{total_paid:,.0f}")
+        l3.metric("Total interest",f"£{interest:,.0f}")
+        r=loan_rate/100/12
+        bal=float(loan_amount)
+        balances=[bal]
+        for m in range(loan_years*12):
+            bal=bal*(1+r)-pay
+            balances.append(max(bal,0))
+        loan_fig=go.Figure()
+        loan_fig.add_scatter(x=[m/12 for m in range(len(balances))],y=balances,name="Balance left")
+        loan_fig.update_layout(xaxis_title="Years",yaxis_title="£ left to pay")
+        st.plotly_chart(loan_fig,use_container_width=True)
 
-with tab8: 
-    st.subheader("Salary projection") 
-    st.caption("USes the pension, Scottish and student loan settings from the first tab.") 
-    proj_salary=st.number_input("Starting salary (£)",min_value=0,value=35000,step=1000) 
-    raise_pct=st.slider("Yearly pay rise (%)",0.0,10.0,2.5,0.5) 
-    inflation=st.slider("Inflation per year (%)",0.0,10.0,2.5,0.5) 
-    proj_years=st.slider("Years to project",1,30,10) 
-    if proj_salary>00: 
-        proj=calc_projection(proj_salary,pension,scottish,plan,raise_pct,inflation,proj_years) 
-        last=proj[-1] 
-        p1,p2=st.columns(2) 
-        p1.metric(f"Take-home per month in year {proj_years}",f"£{last[2]/12:,.0f}") 
-        p2.metric("Same amount in today's money",f"£{last[3]/12:,.0f}")  
-        proj_fig=go.Figure() 
-        proj_fig.add_scatter(x=[row[0] for row in proj],y=[row[2]/12 for row in proj],name="Take-home") 
-        proj_fig.add_scatter(x=[row[0] for row in proj],y=[row[3]/12 for row in proj],name="In today's money") 
-        proj_fig.update_layout(xaxis_title="Years",yaxis_title="£ per month",legend=dict(orientation="h")) 
+with tab8:
+    st.subheader("Salary projection")
+    st.caption("Uses the pension, Scottish and student loan settings from the first tab.")
+    proj_salary=st.number_input("Starting salary (£)",min_value=0,value=35000,step=1000)
+    raise_pct=st.slider("Yearly pay rise (%)",0.0,10.0,2.5,0.5)
+    inflation=st.slider("Inflation per year (%)",0.0,10.0,2.5,0.5)
+    proj_years=st.slider("Years to project",1,30,10)
+    if proj_salary>0:
+        proj=calc_projection(proj_salary,pension,scottish,plan,raise_pct,inflation,proj_years)
+        last=proj[-1]
+        p1,p2=st.columns(2)
+        p1.metric(f"Take-home per month in year {proj_years}",f"£{last[2]/12:,.0f}")
+        p2.metric("Same amount in today's money",f"£{last[3]/12:,.0f}")
+        proj_fig=go.Figure()
+        proj_fig.add_scatter(x=[row[0] for row in proj],y=[row[2]/12 for row in proj],name="Take-home")
+        proj_fig.add_scatter(x=[row[0] for row in proj],y=[row[3]/12 for row in proj],name="In today's money")
+        proj_fig.update_layout(xaxis_title="Years",yaxis_title="£ per month",legend=dict(orientation="h"))
         st.plotly_chart(proj_fig,use_container_width=True)
+
+with tab9:
+    st.subheader("Self-employed")
+    st.caption("Uses the Scottish and student loan settings from the first tab. Class 4 NI only, as Class 2 is now voluntary.")
+    se_income=st.number_input("Income from self-employment (£)",min_value=0,value=50000,step=1000)
+    se_expenses=st.number_input("Business expenses (£)",min_value=0,value=10000,step=500)
+    profit,se_tax,se_ni,se_loan,se_take=calc_self_employed(se_income,se_expenses,scottish,plan)
+    s1,s2=st.columns(2)
+    s1.metric("Profit",f"£{profit:,.0f}")
+    s2.metric("Take-home per month",f"£{se_take/12:,.0f}")
+    s3,s4,s5=st.columns(3)
+    s3.metric("Income tax",f"£{se_tax:,.0f}")
+    s4.metric("Class 4 NI",f"£{se_ni:,.0f}")
+    s5.metric("Student loan",f"£{se_loan:,.0f}")
+    st.metric("Take-home per year",f"£{se_take:,.0f}")
+
+with tab10:
+    st.subheader("Bonus calculator")
+    st.caption("Uses the salary, pension, Scottish and student loan settings from the first tab. Pension is taken from the bonus too.")
+    bonus=st.number_input("One-off bonus (£)",min_value=0,value=5000,step=500)
+    kept=calc_take_home(salary+bonus,pension,scottish,plan)-calc_take_home(salary,pension,scottish,plan)
+    b1,b2=st.columns(2)
+    b1.metric("You keep",f"£{kept:,.0f}")
+    b2.metric("Share kept",f"{kept/bonus*100 if bonus>0 else 0:,.0f}%")
+    st.write(f"£{bonus-kept:,.0f} of the bonus goes on tax, NI, pension and student loan.") 
+
+with tab11:
+    st.subheader("Salary sacrifice vs normal pension")
+    st.caption("Uses the salary, pension, Scottish and student loan settings from the first tab. Your pension pot is the same either way.")
+    normal=calc_take_home(salary,pension,scottish,plan)
+    sacrifice=calc_take_home(salary-salary*pension/100,0,scottish,plan)
+    x1,x2=st.columns(2)
+    x1.metric("Normal pension, per month",f"£{normal/12:,.0f}")
+    x2.metric("Salary sacrifice, per month",f"£{sacrifice/12:,.0f}")
+    st.metric("Extra you keep per year",f"£{sacrifice-normal:,.0f}")
