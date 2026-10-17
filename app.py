@@ -3,9 +3,10 @@ import plotly.graph_objects as go
 import json
 import streamlit.components.v1 as components
 from calc import calc_income_tax,calc_ni,calc_student_loan,tax_breakdown,calc_take_home,find_salary,calc_loan,calc_projection,calc_self_employed,calc_take_home_2025
-st.set_page_config(page_title="UK Take-Home Pay Calculator",page_icon="💷",layout="centered")
+st.set_page_config(page_title="UK Take-Home Pay Calculator",page_icon="💷",layout="wide")
 st.markdown("<style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');html,body,.stApp{font-family:'Inter',sans-serif;}</style>",unsafe_allow_html=True)
-st.markdown("<style>div[data-baseweb='tab-list']{gap:24px;}button[data-baseweb='tab']{padding:12px 4px;}</style>",unsafe_allow_html=True)
+st.markdown("<style>div[data-baseweb='tab-list']{gap:8px 24px;flex-wrap:wrap;overflow:visible;border:1px solid rgba(128,128,128,0.4);border-radius:8px;padding:6px 16px;}div[data-baseweb='tab-highlight'],div[data-baseweb='tab-border']{display:none;}button[data-baseweb='tab']{padding:10px 4px;}</style>",unsafe_allow_html=True)
+st.markdown("<style>div.block-container{max-width:1100px;margin:auto;}</style>",unsafe_allow_html=True)
 
 components.html("""<script>
 const d=window.parent.document;
@@ -97,14 +98,13 @@ with tab1:
     take_home=salary-pension_amount-tax-ni-loan
 
     col1,col2=st.columns(2)
-    col1.metric("Take-home per year",f"£{take_home:,.0f}")
-    col2.metric("Take-home per month",f"£{take_home/12:,.0f}")
-    col3,col4,col5=st.columns(3)
-    col3.metric("Income tax",f"£{tax:,.0f}")
-    col4.metric("National Insurance",f"£{ni:,.0f}")
-    col5.metric("Pension",f"£{pension_amount:,.0f}")
-    st.metric("Student loan",f"£{loan:,.0f}")
-
+    col1.metric("Take-home per year",f"£{take_home:,.0f}",border=True) 
+    col2.metric("Take-home per month",f"£{take_home/12:,.0f}",border=True)  
+    col3,col4,col5=st.columns(3) 
+    col3.metric("Income Tax",f"£{tax:,.0f}",border=True) 
+    col4.metric("National Insurance",f"£{ni:,.0f}",border=True) 
+    col5.metric("Pension",f"£{pension_amount:,.0f}",border=True) 
+    st.metric("Student loan",f"£{loan:,.0f}",border=True)
     fig=go.Figure(go.Pie(labels=["Take-home","Income tax","National Insurance","Pension","Student loan"],values=[take_home,tax,ni,pension_amount,loan],hole=0.5,marker_colors=["#1B5E3B","#C0392B","#E67E22","#7F8C8D","#2980B9"],hovertemplate="%{label}<br>£%{value:,.0f}<extra></extra>"))
     st.plotly_chart(fig,use_container_width=True)
 
@@ -156,9 +156,8 @@ with tab2:
     spent=rent+food+subs_total+bills_total+transport_total
     left=monthly-spent
     c1,c2=st.columns(2)
-    c1.metric("Spent",f"£{spent:,.2f}")
-    c2.metric("Left over",f"£{left:,.2f}")
-
+    c1.metric("Spent",f"£{spent:,.2f}",border=True) 
+    c2.metric("Left over",f"£{left:,.2f}",border=True)
     budget_fig=go.Figure(go.Pie(labels=["Rent","Food","Subscriptions","Bills","Transport","Left over"],values=[rent,food,subs_total,bills_total,transport_total,max(left,0)],hole=0.5,marker_colors=["#C0392B","#E67E22","#2980B9","#8E44AD","#F1C40F","#1B5E3B"],hovertemplate="%{label}<br>£%{value:,.2f}<extra></extra>"))
     st.plotly_chart(budget_fig,use_container_width=True)
     st.subheader("50/30/20 check")
@@ -235,7 +234,7 @@ with tab6:
         history.append(balance)
         paid.append(deposit*months)
     if deposit>0:
-        st.metric("Time to reach goal",f"{months//12} years {months%12} months")
+        st.metric("Time to reach goal",f"{months//12} years {months%12} months",border=True)
         sav_fig=go.Figure()
         sav_fig.add_scatter(x=list(range(len(history))),y=history,name="Balance",line=dict(color="#1B5E3B"))
         sav_fig.add_scatter(x=list(range(len(paid))),y=paid,name="Deposits only",line=dict(color="#7F8C8D",dash="dash"))
@@ -250,9 +249,9 @@ with tab7:
     if loan_amount>0:
         pay,total_paid,interest=calc_loan(loan_amount,loan_rate,loan_years)
         l1,l2,l3=st.columns(3)
-        l1.metric("Monthly payment",f"£{pay:,.0f}")
-        l2.metric("Total paid",f"£{total_paid:,.0f}")
-        l3.metric("Total interest",f"£{interest:,.0f}")
+        l1.metric("Monthyl payment",f"£{pay:,.0f}",border=True) 
+        l2.metric("Total paid",f"£{interest:,.0f}",border=True) 
+        l3.metric("Total interest",f"£{interest:,.0f}",border=True)
         r=loan_rate/100/12
         bal=float(loan_amount)
         balances=[bal]
@@ -275,8 +274,8 @@ with tab8:
         proj=calc_projection(proj_salary,pension,scottish,plan,raise_pct,inflation,proj_years)
         last=proj[-1]
         p1,p2=st.columns(2)
-        p1.metric(f"Take-home per month in year {proj_years}",f"£{last[2]/12:,.0f}")
-        p2.metric("Same amount in today's money",f"£{last[3]/12:,.0f}")
+        p1.metric(f"Take-home per month in year {proj_years}",f"£{last[2]/12:,.0f}",border=True)
+        p2.metric("Same amount in today's money",f"£{last[3]/12:,.0f}",border=True)
         proj_fig=go.Figure()
         proj_fig.add_scatter(x=[row[0] for row in proj],y=[row[2]/12 for row in proj],name="Take-home",line=dict(color="#1B5E3B"))
         proj_fig.add_scatter(x=[row[0] for row in proj],y=[row[3]/12 for row in proj],name="In today's money",line=dict(color="#7F8C8D",dash="dash"))
@@ -290,13 +289,11 @@ with tab9:
     se_expenses=st.number_input("Business expenses (£)",min_value=0,value=10000,step=500)
     profit,se_tax,se_ni,se_loan,se_take=calc_self_employed(se_income,se_expenses,scottish,plan)
     s1,s2=st.columns(2)
-    s1.metric("Profit",f"£{profit:,.0f}")
-    s2.metric("Take-home per month",f"£{se_take/12:,.0f}")
+    s1.metric("Profit",f"£{profit:,.0f}",border=True) 
+    s2.metric("Take-home per month",f"£{se_take/12:,.0f}",border=True)
     s3,s4,s5=st.columns(3)
-    s3.metric("Income tax",f"£{se_tax:,.0f}")
-    s4.metric("Class 4 NI",f"£{se_ni:,.0f}")
-    s5.metric("Student loan",f"£{se_loan:,.0f}")
-    st.metric("Take-home per year",f"£{se_take:,.0f}")
+    s3.metric("Income tax",f"£{se_tax:,.0f}",border=True) 
+    s4.metric("Class 4 NI",f"£{se_take:,.0f}",border=True)
 
 with tab10:
     st.subheader("Bonus calculator")
@@ -304,8 +301,8 @@ with tab10:
     bonus=st.number_input("One-off bonus (£)",min_value=0,value=5000,step=500)
     kept=calc_take_home(salary+bonus,pension,scottish,plan)-calc_take_home(salary,pension,scottish,plan)
     b1,b2=st.columns(2)
-    b1.metric("You keep",f"£{kept:,.0f}")
-    b2.metric("Share kept",f"{kept/bonus*100 if bonus>0 else 0:,.0f}%")
+    b1.metric("You keep",f"£{kept:,.0f}",border=True) 
+    b2.metric("Share kept",f"{kept/bonus*100 if bonus>0 else 0:,.0f}%",border=True)
     st.write(f"£{bonus-kept:,.0f} of the bonus goes on tax, NI, pension and student loan.")
 
 with tab11:
@@ -314,19 +311,18 @@ with tab11:
     normal=calc_take_home(salary,pension,scottish,plan)
     sacrifice=calc_take_home(salary-salary*pension/100,0,scottish,plan)
     x1,x2=st.columns(2)
-    x1.metric("Normal pension, per month",f"£{normal/12:,.0f}")
-    x2.metric("Salary sacrifice, per month",f"£{sacrifice/12:,.0f}")
-    st.metric("Extra you keep per year",f"£{sacrifice-normal:,.0f}")
-
+    x1.metric("Normal pension,per month",f"£{sacrifice-normal:,.0f}",border=True) 
+    x2.metric("Salary sacrifice,per month",f"£{sacrifice-normal:,.0f}",border=True) 
+    st.metric("Extra you keep per year",f"£{sacrifice-normal:,.0f}",border=True)
 with tab12:
     st.subheader("Tax year comparison")
     st.caption("Uses the salary, pension, Scottish and student loan settings from the first tab. 2025/26 against 2026/27.")
     old=calc_take_home_2025(salary,pension,scottish,plan)
     new=calc_take_home(salary,pension,scottish,plan)
     y1,y2=st.columns(2)
-    y1.metric("2025/26 per month",f"£{old/12:,.0f}")
-    y2.metric("2026/27 per month",f"£{new/12:,.0f}")
-    st.metric("Difference per year",f"£{new-old:,.0f}")
+    y1.metric("2025/26 per month",f"£{old/12:,.0f}",border=True) 
+    y2.metric("2026/27 per momth",f"£{new/12:,.0f}",border=True) 
+    st.metric("Difference per year",f"£{new-old:,.0f}",border=True)
 
 with tab13:
     st.subheader("Pay converter")
@@ -355,10 +351,10 @@ with tab13:
 
     st.subheader("Converted pay")
     k1,k2=st.columns(2)
-    k1.metric("Hourly",f"£{hourly:,.2f}")
-    k2.metric("Daily",f"£{daily:,.2f}")
+    k1.metric("Hourly",f"£{hourly:,.2f}",border=True)
+    k2.metric("Daily",f"£{daily:,.2f}",border=True)
     k3,k4=st.columns(2)
-    k3.metric("Weekly",f"£{weekly:,.2f}")
-    k4.metric("Monthly",f"£{per_month:,.2f}")
-    st.metric("Yearly",f"£{annual:,.2f}")
+    k3.metric("Weekly",f"£{weekly:,.2f}",border=True)
+    k4.metric("Monthly",f"£{per_month:,.2f}",border=True)
+    st.metric("Yearly",f"£{annual:,.2f}",border=True)
     st.caption("Assumes 52 working weeks per year. Figures are before tax and deductions.")
