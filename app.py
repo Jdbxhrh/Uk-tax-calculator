@@ -1,17 +1,56 @@
 import streamlit as st
 import plotly.graph_objects as go
 import json
+import streamlit.components.v1 as components
 from calc import calc_income_tax,calc_ni,calc_student_loan,tax_breakdown,calc_take_home,find_salary,calc_loan,calc_projection,calc_self_employed,calc_take_home_2025
 st.set_page_config(page_title="UK Take-Home Pay Calculator",page_icon="💷",layout="centered")
 st.markdown("<style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');html,body,.stApp{font-family:'Inter',sans-serif;}</style>",unsafe_allow_html=True)
+st.markdown("<style>div[data-baseweb='tab-list']{gap:24px;}button[data-baseweb='tab']{padding:12px 4px;}</style>",unsafe_allow_html=True)
+
+components.html("""<script>
+const d=window.parent.document;
+if(!d.commaHook){
+d.commaHook=true;
+d.addEventListener('input',function(e){
+const el=e.target;
+if(el.tagName!=='INPUT'||el.type!=='text'||!e.isTrusted)return;
+const raw=el.value.replace(/,/g,'');
+if(raw===''||!/^\\d*\\.?\\d*$/.test(raw))return;
+const parts=raw.split('.');
+parts[0]=parts[0].replace(/\\B(?=(\\d{3})+(?!\\d))/g,',');
+const out=parts.join('.');
+if(out===el.value)return;
+const pos=el.selectionStart;
+const before=(el.value.slice(0,pos).match(/,/g)||[]).length;
+const setter=Object.getOwnPropertyDescriptor(window.parent.HTMLInputElement.prototype,'value').set;
+setter.call(el,out);
+let n=pos-before,i=0;
+while(i<out.length&&n>0){if(out[i]!==',')n--;i++;}
+el.setSelectionRange(i,i);
+el.dispatchEvent(new Event('input',{bubbles:true}));
+},true);
+}
+</script>""",height=0)
+
+def show_zoom(fig):
+    fig.update_layout(dragmode="pan")
+    st.plotly_chart(fig,use_container_width=True,config={"scrollZoom":True})
+
+def fmt_commas(key):
+    text=st.session_state[key].replace(",","")
+    try:
+        if "." in text:
+            whole,dec=text.split(".",1)
+            st.session_state[key]=f"{int(whole or 0):,}."+dec
+        else:
+            st.session_state[key]=f"{int(text):,}"
+    except ValueError:
+        pass
 
 def money(label,default="",key=None):
-    if key is not None and key in st.session_state:
-        text=st.text_input(label,placeholder="0.00",key=key)
-    else:
-        text=st.text_input(label,value=default,placeholder="0.00",key=key)
+    text=st.text_input(label,placeholder=default or "0.00",key=key,on_change=fmt_commas,args=(key,))
     try:
-        return max(float(text.replace(",","")),0.0)
+        return max(float((text or default).replace(",","")),0.0)
     except ValueError:
         return 0.0
 
@@ -28,7 +67,7 @@ def item_group(title,key,hint,show_title=True):
         added=st.form_submit_button("+ Add")
     if added and name:
         try:
-            st.session_state[key].append((name,float(cost)))
+            st.session_state[key].append((name,float(cost.replace(",",""))))
             st.rerun()
         except ValueError:
             st.warning("Enter the cost as a number, like 12.99")
@@ -46,7 +85,7 @@ st.caption("See your income tax, National Insurance and take-home pay.")
 tab1,tab2,tab3,tab4,tab5,tab6,tab7,tab8,tab9,tab10,tab11,tab12,tab13=st.tabs(["Take-home calculator","Budget","Charts","Reverse","Compare","Savings","Loans","Projection","Self-employed","Bonus","Sacrifice","Tax year","Pay converter"])
 
 with tab1:
-    salary=st.number_input("Annual salary (£)",min_value=0,value=35000,step=1000)
+    salary=money("Annual salary (£)","35,000",key="salary_money")
     pension=st.slider("Pension contribution (%)",0,100,5)
     scottish=st.checkbox("Scottish taxpayer")
     plan=st.selectbox("Student loan",["None","Plan 1","Plan 2","Plan 4","Plan 5","Postgraduate"])
@@ -66,7 +105,7 @@ with tab1:
     col5.metric("Pension",f"£{pension_amount:,.0f}")
     st.metric("Student loan",f"£{loan:,.0f}")
 
-    fig=go.Figure(go.Pie(labels=["Take-home","Income tax","National Insurance","Pension","Student loan"],values=[take_home,tax,ni,pension_amount,loan],hole=0.5,marker_colors=["#1B5E3B","#C0392B","#E67E22","#7F8C8D","#2980B9"]))
+    fig=go.Figure(go.Pie(labels=["Take-home","Income tax","National Insurance","Pension","Student loan"],values=[take_home,tax,ni,pension_amount,loan],hole=0.5,marker_colors=["#1B5E3B","#C0392B","#E67E22","#7F8C8D","#2980B9"],hovertemplate="%{label}<br>£%{value:,.0f}<extra></extra>"))
     st.plotly_chart(fig,use_container_width=True)
 
     st.subheader("Income by tax band")
@@ -107,7 +146,7 @@ with tab2:
             except (ValueError,TypeError,KeyError,AttributeError):
                 st.error("Invalid budget file.")
     st.divider()
-    monthly=money("Monthly take-home (£)",str(round(take_home/12)),key="budget_monthly")
+    monthly=money("Monthly take-home (£)",f"{round(take_home/12):,}",key="budget_monthly")
     st.subheader("Essentials")
     rent=money("Rent (£)",key="budget_rent")
     food=money("Food (£)",key="budget_food")
@@ -120,7 +159,7 @@ with tab2:
     c1.metric("Spent",f"£{spent:,.2f}")
     c2.metric("Left over",f"£{left:,.2f}")
 
-    budget_fig=go.Figure(go.Pie(labels=["Rent","Food","Subscriptions","Bills","Transport","Left over"],values=[rent,food,subs_total,bills_total,transport_total,max(left,0)],hole=0.5,marker_colors=["#C0392B","#E67E22","#2980B9","#8E44AD","#F1C40F","#1B5E3B"]))
+    budget_fig=go.Figure(go.Pie(labels=["Rent","Food","Subscriptions","Bills","Transport","Left over"],values=[rent,food,subs_total,bills_total,transport_total,max(left,0)],hole=0.5,marker_colors=["#C0392B","#E67E22","#2980B9","#8E44AD","#F1C40F","#1B5E3B"],hovertemplate="%{label}<br>£%{value:,.2f}<extra></extra>"))
     st.plotly_chart(budget_fig,use_container_width=True)
     st.subheader("50/30/20 check")
     if monthly>0:
@@ -140,7 +179,7 @@ with tab3:
     line_fig.add_trace(go.Scatter(x=salaries,y=salaries,name="Gross salary",line=dict(color="#7F8C8D",dash="dash")))
     line_fig.add_trace(go.Scatter(x=salaries,y=takes,name="Take-home",line=dict(color="#1B5E3B")))
     line_fig.update_layout(xaxis_title="Salary (£)",yaxis_title="£ per year",legend=dict(orientation="h"))
-    st.plotly_chart(line_fig,use_container_width=True)
+    show_zoom(line_fig)
 
     st.subheader("Marginal tax rate")
     st.caption("Out of each extra £1 earned, how much goes in tax, NI and student loans. Ignores pension")
@@ -150,12 +189,12 @@ with tab3:
         marginal.append((1-extra/100)*100)
     marg_fig=go.Figure(go.Scatter(x=salaries,y=marginal,line=dict(color="#C0392B")))
     marg_fig.update_layout(xaxis_title="Salary (£)",yaxis_title="Marginal rate (%)")
-    st.plotly_chart(marg_fig,use_container_width=True)
+    show_zoom(marg_fig)
 
 with tab4:
     st.subheader("Reverse calculator")
     st.caption("Uses the pension, Scottish and student loan settings from the first tab.")
-    target=money("Target monthly take-home (£)","2500")
+    target=money("Target monthly take-home (£)","2,500",key="target_money")
     if target>0:
         needed=find_salary(target,pension,scottish,plan)
         st.metric("Salary needed per year",f"£{needed:,.0f}")
@@ -190,7 +229,7 @@ with tab6:
     balance=0.0
     history=[0.0]
     paid=[0.0]
-    while balance<goal and months<1200 and deposit>0:
+    while balance<goal and months<120000 and deposit>0:
         balance=balance*(1+rate/100/12)+deposit
         months+=1
         history.append(balance)
@@ -201,7 +240,7 @@ with tab6:
         sav_fig.add_scatter(x=list(range(len(history))),y=history,name="Balance",line=dict(color="#1B5E3B"))
         sav_fig.add_scatter(x=list(range(len(paid))),y=paid,name="Deposits only",line=dict(color="#7F8C8D",dash="dash"))
         sav_fig.update_layout(xaxis_title="Months",yaxis_title="£")
-        st.plotly_chart(sav_fig,use_container_width=True)
+        show_zoom(sav_fig)
 
 with tab7:
     st.subheader("Loan and mortgage calculator")
@@ -223,7 +262,7 @@ with tab7:
         loan_fig=go.Figure()
         loan_fig.add_scatter(x=[m/12 for m in range(len(balances))],y=balances,name="Balance left",line=dict(color="#C0392B"))
         loan_fig.update_layout(xaxis_title="Years",yaxis_title="£ left to pay")
-        st.plotly_chart(loan_fig,use_container_width=True)
+        show_zoom(loan_fig)
 
 with tab8:
     st.subheader("Salary projection")
@@ -242,7 +281,7 @@ with tab8:
         proj_fig.add_scatter(x=[row[0] for row in proj],y=[row[2]/12 for row in proj],name="Take-home",line=dict(color="#1B5E3B"))
         proj_fig.add_scatter(x=[row[0] for row in proj],y=[row[3]/12 for row in proj],name="In today's money",line=dict(color="#7F8C8D",dash="dash"))
         proj_fig.update_layout(xaxis_title="Years",yaxis_title="£ per month",legend=dict(orientation="h"))
-        st.plotly_chart(proj_fig,use_container_width=True)
+        show_zoom(proj_fig)
 
 with tab9:
     st.subheader("Self-employed")
