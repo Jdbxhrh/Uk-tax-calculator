@@ -5,7 +5,7 @@ import streamlit.components.v1 as components
 from calc import calc_income_tax,calc_ni,calc_student_loan,tax_breakdown,calc_take_home,find_salary,calc_loan,calc_projection,calc_self_employed,calc_take_home_2025
 st.set_page_config(page_title="UK Take-Home Pay Calculator",page_icon="💷",layout="wide")
 st.markdown("<style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');html,body,.stApp{font-family:'Inter',sans-serif;}</style>",unsafe_allow_html=True)
-st.markdown("<style>div[data-baseweb='tab-list']{gap:8px 24px;flex-wrap:wrap;overflow:visible;border:1px solid rgba(128,128,128,0.4);border-radius:8px;padding:6px 16px;}div[data-baseweb='tab-highlight'],div[data-baseweb='tab-border']{display:none;}button[data-baseweb='tab']{padding:10px 4px;}</style>",unsafe_allow_html=True)
+st.markdown("<style>div[data-baseweb='tab-list']{gap:8px 24px;flex-wrap:wrap;overflow:visible;border:1px solid rgba(128,128,128,0.4);border-radius:8px;padding:6px 16px;position:sticky;top:3.5rem;z-index:999;background-color:var(--background-color,#0E1117);}div[data-baseweb='tab-highlight'],div[data-baseweb='tab-border']{display:none;}button[data-baseweb='tab']{padding:10px 4px;}</style>",unsafe_allow_html=True)
 st.markdown("<style>div.block-container{max-width:1100px;margin:auto;}</style>",unsafe_allow_html=True)
 
 components.html("""<script>
@@ -48,8 +48,8 @@ def fmt_commas(key):
     except ValueError:
         pass
 
-def money(label,default="",key=None):
-    text=st.text_input(label,placeholder=default or "0.00",key=key,on_change=fmt_commas,args=(key,))
+def money(label,default="",key=None,box=st):
+    text=box.text_input(label,placeholder=default or "0.00",key=key,on_change=fmt_commas,args=(key,))
     try:
         return max(float((text or default).replace(",","")),0.0)
     except ValueError:
@@ -98,12 +98,12 @@ with tab1:
     take_home=salary-pension_amount-tax-ni-loan
 
     col1,col2=st.columns(2)
-    col1.metric("Take-home per year",f"£{take_home:,.0f}",border=True) 
-    col2.metric("Take-home per month",f"£{take_home/12:,.0f}",border=True)  
-    col3,col4,col5=st.columns(3) 
-    col3.metric("Income Tax",f"£{tax:,.0f}",border=True) 
-    col4.metric("National Insurance",f"£{ni:,.0f}",border=True) 
-    col5.metric("Pension",f"£{pension_amount:,.0f}",border=True) 
+    col1.metric("Take-home per year",f"£{take_home:,.0f}",border=True)
+    col2.metric("Take-home per month",f"£{take_home/12:,.0f}",border=True)
+    col3,col4,col5=st.columns(3)
+    col3.metric("Income Tax",f"£{tax:,.0f}",border=True)
+    col4.metric("National Insurance",f"£{ni:,.0f}",border=True)
+    col5.metric("Pension",f"£{pension_amount:,.0f}",border=True)
     st.metric("Student loan",f"£{loan:,.0f}",border=True)
     fig=go.Figure(go.Pie(labels=["Take-home","Income tax","National Insurance","Pension","Student loan"],values=[take_home,tax,ni,pension_amount,loan],hole=0.5,marker_colors=["#1B5E3B","#C0392B","#E67E22","#7F8C8D","#2980B9"],hovertemplate="%{label}<br>£%{value:,.0f}<extra></extra>"))
     st.plotly_chart(fig,use_container_width=True)
@@ -156,7 +156,7 @@ with tab2:
     spent=rent+food+subs_total+bills_total+transport_total
     left=monthly-spent
     c1,c2=st.columns(2)
-    c1.metric("Spent",f"£{spent:,.2f}",border=True) 
+    c1.metric("Spent",f"£{spent:,.2f}",border=True)
     c2.metric("Left over",f"£{left:,.2f}",border=True)
     budget_fig=go.Figure(go.Pie(labels=["Rent","Food","Subscriptions","Bills","Transport","Left over"],values=[rent,food,subs_total,bills_total,transport_total,max(left,0)],hole=0.5,marker_colors=["#C0392B","#E67E22","#2980B9","#8E44AD","#F1C40F","#1B5E3B"],hovertemplate="%{label}<br>£%{value:,.2f}<extra></extra>"))
     st.plotly_chart(budget_fig,use_container_width=True)
@@ -196,23 +196,23 @@ with tab4:
     target=money("Target monthly take-home (£)","2,500",key="target_money")
     if target>0:
         needed=find_salary(target,pension,scottish,plan)
-        st.metric("Salary needed per year",f"£{needed:,.0f}")
+        st.metric("Salary needed per year",f"£{needed:,.0f}",border=True)
         st.write(f"That is £{needed/12:,.0f} gross per month.")
 
 with tab5:
     st.subheader("Compare two jobs")
     st.caption("Uses the student loan setting from the first tab.")
     ca,cb=st.columns(2)
-    sal_a=ca.number_input("Job A salary (£)",min_value=0,value=35000,step=1000)
+    sal_a=money("Job A salary (£)","35,000",key="sal_a_money",box=ca)
     pen_a=ca.slider("Job A pension (%)",0,100,5)
     sco_a=ca.checkbox("Job A Scottish taxpayer")
-    sal_b=cb.number_input("Job B salary (£)",min_value=0,value=40000,step=1000)
+    sal_b=money("Job B salary (£)","40,000",key="sal_b_money",box=cb)
     pen_b=cb.slider("Job B pension (%)",0,100,5)
     sco_b=cb.checkbox("Job B Scottish taxpayer")
     take_a=calc_take_home(sal_a,pen_a,sco_a,plan)
     take_b=calc_take_home(sal_b,pen_b,sco_b,plan)
-    ca.metric("Job A take-home per month",f"£{take_a/12:,.0f}")
-    cb.metric("Job B take-home per month",f"£{take_b/12:,.0f}")
+    ca.metric("Job A take-home per month",f"£{take_a/12:,.0f}",border=True)
+    cb.metric("Job B take-home per month",f"£{take_b/12:,.0f}",border=True)
     diff=(take_b-take_a)/12
     if diff>=0:
         st.success(f"Job B pays £{diff:,.0f} more per month.")
@@ -221,8 +221,8 @@ with tab5:
 
 with tab6:
     st.subheader("Savings goal")
-    goal=st.number_input("Savings goal (£)",min_value=0,value=10000,step=500)
-    deposit=st.number_input("Monthly deposit (£)",min_value=0,value=200,step=10)
+    goal=money("Savings goal (£)","10,000",key="goal_money")
+    deposit=money("Monthly deposit (£)","200",key="deposit_money")
     rate=st.slider("Interest rate per year (%)",0.0,10.0,4.0,0.1)
     months=0
     balance=0.0
@@ -243,14 +243,14 @@ with tab6:
 
 with tab7:
     st.subheader("Loan and mortgage calculator")
-    loan_amount=st.number_input("Amount borrowed (£)",min_value=0,value=200000,step=5000)
+    loan_amount=money("Amount borrowed (£)","200,000",key="loan_money")
     loan_rate=st.slider("Interest rate per year (%)",0.0,15.0,5.0,0.1)
     loan_years=st.slider("Term (years)",1,40,25)
     if loan_amount>0:
         pay,total_paid,interest=calc_loan(loan_amount,loan_rate,loan_years)
         l1,l2,l3=st.columns(3)
-        l1.metric("Monthyl payment",f"£{pay:,.0f}",border=True) 
-        l2.metric("Total paid",f"£{interest:,.0f}",border=True) 
+        l1.metric("Monthly payment",f"£{pay:,.0f}",border=True)
+        l2.metric("Total paid",f"£{total_paid:,.0f}",border=True)
         l3.metric("Total interest",f"£{interest:,.0f}",border=True)
         r=loan_rate/100/12
         bal=float(loan_amount)
@@ -266,7 +266,7 @@ with tab7:
 with tab8:
     st.subheader("Salary projection")
     st.caption("Uses the pension, Scottish and student loan settings from the first tab.")
-    proj_salary=st.number_input("Starting salary (£)",min_value=0,value=35000,step=1000)
+    proj_salary=money("Starting salary (£)","35,000",key="proj_money")
     raise_pct=st.slider("Yearly pay rise (%)",0.0,10.0,2.5,0.5)
     inflation=st.slider("Inflation per year (%)",0.0,10.0,2.5,0.5)
     proj_years=st.slider("Years to project",1,30,10)
@@ -285,23 +285,24 @@ with tab8:
 with tab9:
     st.subheader("Self-employed")
     st.caption("Uses the Scottish and student loan settings from the first tab. Class 4 NI only, as Class 2 is now voluntary.")
-    se_income=st.number_input("Income from self-employment (£)",min_value=0,value=50000,step=1000)
-    se_expenses=st.number_input("Business expenses (£)",min_value=0,value=10000,step=500)
+    se_income=money("Income from self-employment (£)","50,000",key="se_income_money")
+    se_expenses=money("Business expenses (£)","10,000",key="se_expenses_money")
     profit,se_tax,se_ni,se_loan,se_take=calc_self_employed(se_income,se_expenses,scottish,plan)
     s1,s2=st.columns(2)
-    s1.metric("Profit",f"£{profit:,.0f}",border=True) 
+    s1.metric("Profit",f"£{profit:,.0f}",border=True)
     s2.metric("Take-home per month",f"£{se_take/12:,.0f}",border=True)
     s3,s4,s5=st.columns(3)
-    s3.metric("Income tax",f"£{se_tax:,.0f}",border=True) 
-    s4.metric("Class 4 NI",f"£{se_take:,.0f}",border=True)
+    s3.metric("Income tax",f"£{se_tax:,.0f}",border=True)
+    s4.metric("Class 4 NI",f"£{se_ni:,.0f}",border=True)
+    s5.metric("Student loan",f"£{se_loan:,.0f}",border=True)
 
 with tab10:
     st.subheader("Bonus calculator")
     st.caption("Uses the salary, pension, Scottish and student loan settings from the first tab. Pension is taken from the bonus too.")
-    bonus=st.number_input("One-off bonus (£)",min_value=0,value=5000,step=500)
+    bonus=money("One-off bonus (£)","5,000",key="bonus_money")
     kept=calc_take_home(salary+bonus,pension,scottish,plan)-calc_take_home(salary,pension,scottish,plan)
     b1,b2=st.columns(2)
-    b1.metric("You keep",f"£{kept:,.0f}",border=True) 
+    b1.metric("You keep",f"£{kept:,.0f}",border=True)
     b2.metric("Share kept",f"{kept/bonus*100 if bonus>0 else 0:,.0f}%",border=True)
     st.write(f"£{bonus-kept:,.0f} of the bonus goes on tax, NI, pension and student loan.")
 
@@ -311,23 +312,24 @@ with tab11:
     normal=calc_take_home(salary,pension,scottish,plan)
     sacrifice=calc_take_home(salary-salary*pension/100,0,scottish,plan)
     x1,x2=st.columns(2)
-    x1.metric("Normal pension,per month",f"£{sacrifice-normal:,.0f}",border=True) 
-    x2.metric("Salary sacrifice,per month",f"£{sacrifice-normal:,.0f}",border=True) 
+    x1.metric("Normal pension, per month",f"£{normal/12:,.0f}",border=True)
+    x2.metric("Salary sacrifice, per month",f"£{sacrifice/12:,.0f}",border=True)
     st.metric("Extra you keep per year",f"£{sacrifice-normal:,.0f}",border=True)
+
 with tab12:
     st.subheader("Tax year comparison")
     st.caption("Uses the salary, pension, Scottish and student loan settings from the first tab. 2025/26 against 2026/27.")
     old=calc_take_home_2025(salary,pension,scottish,plan)
     new=calc_take_home(salary,pension,scottish,plan)
     y1,y2=st.columns(2)
-    y1.metric("2025/26 per month",f"£{old/12:,.0f}",border=True) 
-    y2.metric("2026/27 per momth",f"£{new/12:,.0f}",border=True) 
+    y1.metric("2025/26 per month",f"£{old/12:,.0f}",border=True)
+    y2.metric("2026/27 per month",f"£{new/12:,.0f}",border=True)
     st.metric("Difference per year",f"£{new-old:,.0f}",border=True)
 
 with tab13:
     st.subheader("Pay converter")
     st.caption("Convert gross pay between hourly, daily, weekly, monthly and yearly amounts.")
-    pay_amount=st.number_input("Pay amount (£)",min_value=0.0,value=15.0,step=1.0)
+    pay_amount=money("Pay amount (£)","15",key="pay_money")
     pay_period=st.selectbox("Pay period",["Hourly","Daily","Weekly","Monthly","Yearly"])
     hours_day=st.number_input("Hours worked per day",min_value=0.5,value=8.0,step=0.5)
     days_week=st.number_input("Days worked per week",min_value=1.0,max_value=7.0,value=5.0,step=0.5)
