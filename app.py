@@ -7,6 +7,7 @@ st.set_page_config(page_title="UK Take-Home Pay Calculator",page_icon="💷",lay
 st.markdown("<style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');html,body,.stApp{font-family:'Inter',sans-serif;}</style>",unsafe_allow_html=True)
 st.markdown("<style>div[data-baseweb='tab-list']{gap:8px 24px;flex-wrap:wrap;overflow:visible;border:1px solid rgba(128,128,128,0.4);border-radius:8px;padding:6px 16px;position:sticky;top:3.5rem;z-index:999;background-color:var(--background-color,#0E1117);}div[data-baseweb='tab-highlight'],div[data-baseweb='tab-border']{display:none;}button[data-baseweb='tab']{padding:10px 4px;}</style>",unsafe_allow_html=True)
 st.markdown("<style>div.block-container{max-width:1100px;margin:auto;}</style>",unsafe_allow_html=True)
+st.markdown("<style>.banner{background:linear-gradient(135deg,#1B5E3B,#134029);border-left:6px solid #7F8C8D;border-radius:8px;padding:28px 32px;margin-bottom:16px;}.banner-title{color:#FFFFFF;font-size:2rem;font-weight:600;line-height:1.2;}.banner-sub{color:rgba(255,255,255,0.8);font-size:1rem;margin-top:6px;}</style>",unsafe_allow_html=True)
 
 components.html("""<script>
 const d=window.parent.document;
@@ -80,10 +81,9 @@ def item_group(title,key,hint,show_title=True):
             st.rerun()
     return sum(c for n,c in st.session_state[key])
 
-st.title("UK Take-Home Pay Calculator")
-st.caption("See your income tax, National Insurance and take-home pay.")
+st.markdown("<div class='banner'><div class='banner-title'>💷 UK Take-Home Pay Calculator</div><div class='banner-sub'>See your income tax, National Insurance and take-home pay.</div></div>",unsafe_allow_html=True)
 
-tab1,tab2,tab3,tab4,tab5,tab6,tab7,tab8,tab9,tab10,tab11,tab12,tab13=st.tabs(["Take-home calculator","Budget","Charts","Reverse","Compare","Savings","Loans","Projection","Self-employed","Bonus","Sacrifice","Tax year","Pay converter"])
+tab1,tab2,tab3,tab4,tab5,tab6,tab7,tab8,tab9,tab10,tab11,tab12,tab13,tab14,tab15,tab16=st.tabs(["Take-home calculator","Budget","Charts","Reverse","Compare","Savings","Loans","Projection","Self-employed","Bonus","Sacrifice","Tax year","Pay converter","Tax code","Overtime","Rent vs buy"])
 
 with tab1:
     salary=money("Annual salary (£)","35,000",key="salary_money")
@@ -360,3 +360,84 @@ with tab13:
     k4.metric("Monthly",f"£{per_month:,.2f}",border=True)
     st.metric("Yearly",f"£{annual:,.2f}",border=True)
     st.caption("Assumes 52 working weeks per year. Figures are before tax and deductions.")
+
+with tab14:
+    st.subheader("Tax code checker")
+    st.caption("Type a tax code like 1257L to see what it means.")
+    code=st.text_input("Tax code",placeholder="1257L").upper().replace(" ","")
+    if code:
+        text=code
+        region="England or Northern Ireland"
+        if text.startswith("S"):
+            region="Scotland"
+            text=text[1:]
+        elif text.startswith("C"):
+            region="Wales"
+            text=text[1:]
+        special={"BR":"Basic rate. All your income from this job is taxed at 20%, with no allowance.","D0":"Higher rate. All your income from this job is taxed at 40%.","D1":"Additional rate. All your income from this job is taxed at 45%.","NT":"No tax is taken from this income.","0T":"No tax-free allowance, so tax is taken from the first pound."}
+        letters={"L":"Standard allowance.","M":"You receive Marriage Allowance from your partner.","N":"You gave some of your allowance to your partner.","T":"HMRC needs to review other items in your allowance."}
+        if text in special:
+            if region=="Scotland":
+                st.info("Scottish BR and D codes use the Scottish rates, so check the exact rate on GOV.UK.")
+            else:
+                st.info(special[text])
+        elif text[:-1].isdigit() and text[-1] in letters:
+            allowance=int(text[:-1])*10
+            a1,a2=st.columns(2)
+            a1.metric("Tax-free allowance",f"£{allowance:,.0f}",border=True)
+            a2.metric("Compared with standard £12,570",f"£{allowance-12570:,.0f}",border=True)
+            st.write(f"{letters[text[-1]]} Region: {region}.")
+        elif text.startswith("K") and text[1:].isdigit():
+            extra=int(text[1:])*10
+            st.metric("Added to your taxable income",f"£{extra:,.0f}",border=True)
+            st.write(f"K codes mean you owe tax on benefits or untaxed income. Region: {region}.")
+        else:
+            st.warning("Code not recognised. Try 1257L, S1257L, BR, D0 or K475.")
+
+with tab15:
+    st.subheader("Overtime and shift pay")
+    st.caption("Uses the salary, pension, Scottish and student loan settings from the first tab. Pension is taken from overtime too.")
+    ot_rate=money("Basic hourly rate (£)","15",key="ot_rate_money")
+    ot_hours=st.number_input("Overtime hours per week",min_value=0.0,value=5.0,step=0.5)
+    ot_mult=st.selectbox("Overtime pay rate",["1x","1.25x","1.5x","2x"],index=2)
+    shift_pm=money("Shift allowance per month (£)","0",key="shift_money")
+    extra_gross=ot_rate*float(ot_mult[:-1])*ot_hours*52+shift_pm*12
+    kept_ot=calc_take_home(salary+extra_gross,pension,scottish,plan)-calc_take_home(salary,pension,scottish,plan)
+    o1,o2=st.columns(2)
+    o1.metric("Extra gross per month",f"£{extra_gross/12:,.0f}",border=True)
+    o2.metric("You keep per month",f"£{kept_ot/12:,.0f}",border=True)
+    st.metric("Share kept",f"{kept_ot/extra_gross*100 if extra_gross>0 else 0:,.0f}%",border=True)
+
+with tab16:
+    st.subheader("Rent vs buy")
+    st.caption("Compares the total cost of renting with buying over the years you stay. Ignores stamp duty, fees and what your deposit could earn elsewhere.")
+    rent_pm=money("Monthly rent (£)","1,200",key="rvb_rent_money")
+    price=money("House price (£)","250,000",key="rvb_price_money")
+    dep_pct=st.slider("Deposit (%)",5,50,10)
+    mort_rate=st.slider("Mortgage rate per year (%)",0.0,10.0,4.5,0.1)
+    mort_years=st.slider("Mortgage term (years)",5,40,25)
+    stay=st.slider("Years you stay",1,30,10)
+    growth=st.slider("House price growth per year (%)",0.0,10.0,3.0,0.5)
+    rent_rise=st.slider("Rent rise per year (%)",0.0,10.0,3.0,0.5)
+    if price>0:
+        deposit_amt=price*dep_pct/100
+        borrowed=price-deposit_amt
+        mort_pay=calc_loan(borrowed,mort_rate,mort_years)[0]
+        months_paid=min(stay,mort_years)*12
+        mr=mort_rate/100/12
+        mort_bal=borrowed
+        for m in range(months_paid):
+            mort_bal=mort_bal*(1+mr)-mort_pay
+        mort_bal=max(mort_bal,0)
+        sale=price*(1+growth/100)**stay
+        maintenance=price*0.01*stay
+        buy_cost=deposit_amt+mort_pay*months_paid+maintenance-(sale-mort_bal)
+        rent_cost=sum(rent_pm*12*(1+rent_rise/100)**y for y in range(stay))
+        v1,v2=st.columns(2)
+        v1.metric("Total rent",f"£{rent_cost:,.0f}",border=True)
+        v2.metric("Net cost of buying",f"£{buy_cost:,.0f}",border=True)
+        if buy_cost<rent_cost:
+            st.success(f"Buying costs £{rent_cost-buy_cost:,.0f} less over {stay} years.")
+        else:
+            st.warning(f"Renting costs £{buy_cost-rent_cost:,.0f} less over {stay} years.")
+        st.caption("Net cost of buying = deposit + mortgage payments + 1% a year upkeep, minus what is left after selling and paying off the mortgage.")
